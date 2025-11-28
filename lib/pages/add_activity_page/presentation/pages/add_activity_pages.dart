@@ -44,7 +44,7 @@ class _AddActivityPagesState extends ConsumerState<AddActivityPages> {
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: dueDate,
-      firstDate: DateTime(2015, 8),
+      firstDate: dueDate,
       lastDate: DateTime(2101),
     );
 

@@ -6,6 +6,9 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:todo_app/components/text_view_widget.dart';
 import 'package:todo_app/pages/add_activity_page/presentation/pages/add_activity_pages.dart';
 import '../../../add_activity_page/presentation/provider/activity_providers.dart';
+import 'all_complete_activity_page.dart';
+import 'all_today_activity_page.dart';
+import 'all_upcoming_activity_page.dart';
 
 // Ganti StatefulWidget dengan ConsumerStatefulWidget
 class HomePages extends ConsumerStatefulWidget {
@@ -21,6 +24,7 @@ class _HomePagesState extends ConsumerState<HomePages>
   // final AddActivityController controller = Get.find(); // Dihapus
 
   late TabController tabController;
+  int? index;
 
   @override
   void initState() {
@@ -88,7 +92,6 @@ class _HomePagesState extends ConsumerState<HomePages>
     if (activities.isEmpty) {
       return Center(child: TextView(text: "Tidak ada aktivitas."));
     }
-
     return Column(
       children: [
         SizedBox(
@@ -102,7 +105,17 @@ class _HomePagesState extends ConsumerState<HomePages>
           ),
         ),
         InkWell(
-          onTap: () => print("View All Activity"),
+          onTap: () {
+            if(index == 0){
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => AllTodayActivityPage(),));
+            }else if (index == 1){
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => AllUpcomingActivityPage(),));
+            }else if(index == 2){
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => AllCompleteActivityPage(),));
+            }else{
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => AllTodayActivityPage(),));
+            }
+          },
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12.r),
@@ -128,9 +141,9 @@ class _HomePagesState extends ConsumerState<HomePages>
   Widget build(BuildContext context) {
     // 1. Ganti Get.find() dengan ref.watch()
     final activityState = ref.watch(activityListProvider);
-    final todayActivities = ref.watch(upcomingListProvider);
+    final todayActivities = ref.watch(todayListProvider);
     final upcomingActivities = ref.watch(upcomingListProvider);
-    final completedActivities = ref.watch(upcomingListProvider);
+    final completedActivities = ref.watch(historyListProvider);
 
     // Hitung progress di sini
     final total = activityState.value?.length ?? 0;
@@ -142,7 +155,7 @@ class _HomePagesState extends ConsumerState<HomePages>
       backgroundColor: const Color(0xFF75AAE1),
       appBar: AppBar(
         backgroundColor: const Color(0xFF75AAE1),
-        title: TextView(text: "Todo App", isBold: true),
+        title: TextView(text: "Todo App ", isBold: true),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
@@ -217,6 +230,11 @@ class _HomePagesState extends ConsumerState<HomePages>
               TabBar(
                 indicatorColor: const Color(0xFF3184C3),
                 controller: tabController,
+                onTap: (value) {
+                  setState(() {
+                    index = value;
+                  });
+                },
                 tabs: const [ // Dibuat const karena tidak ada perubahan di sini
                   Tab(child: _TabItem(text: "Hari ini")),
                   Tab(child: _TabItem(text: "Akan Datang")),

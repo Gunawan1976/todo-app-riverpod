@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:todo_app/pages/add_activity_page/data/implements/add_activity_implements.dart';
 import '../../data/data_sources/local_source.dart';
@@ -20,40 +21,58 @@ final activityListProvider = AsyncNotifierProvider<ActivityNotifier, List<AddAct
   return ActivityNotifier();
 });
 
-// 4. Provider Filter: Upcoming (Hari ini & Masa Depan)
-final upcomingListProvider = Provider<List<AddActivityEntity>>((ref) {
-  // Amati (watch) state utama
+DateTime _normalizeDate(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+final todayListProvider = Provider<List<AddActivityEntity>>((ref) {
   final asyncActivities = ref.watch(activityListProvider);
+  if (asyncActivities.isLoading || asyncActivities.hasError) return [];
 
-  // Jika masih loading/error, kembalikan list kosong
-  if (asyncActivities.isLoading || asyncActivities.hasError) {
-    return [];
-  }
-
-  // Jika data sudah ada, terapkan filtering
   final allActivities = asyncActivities.value!;
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+  // Tanggal dasar (Hari ini jam 00:00:00)
+  final todayNormalized = _normalizeDate(DateTime.now());
 
   return allActivities.where((note) {
-    return note.dueDate!.isAtSameMomentAs(today) || note.dueDate!.isAfter(today);
+    // 1. Normalisasi due date task
+    final noteDateNormalized = _normalizeDate(note.dueDate!);
+
+    // 2. Cek apakah tanggalnya SAMA PERSIS dengan hari ini
+    return noteDateNormalized.isAtSameMomentAs(todayNormalized);
   }).toList();
+});
+
+final upcomingListProvider = Provider<List<AddActivityEntity>>((ref) {
+  final asyncActivities = ref.watch(activityListProvider);
+  if (asyncActivities.isLoading || asyncActivities.hasError) return [];
+
+  final allActivities = asyncActivities.value!;
+  // Tanggal dasar (Tengah malam hari ini)
+  final todayNormalized = _normalizeDate(DateTime.now());
+
+  return allActivities.where((note) {
+    // 1. Normalisasi due date task
+    final noteDateNormalized = _normalizeDate(note.dueDate!);
+
+    // 2. Cek apakah tanggalnya berada di MASA DEPAN (besok dan seterusnya)
+    return noteDateNormalized.isAfter(todayNormalized);
+  }).toList();
+
+  // Catatan: Hapus blok if (kDebugMode) di production code.
 });
 
 // 5. Provider Filter: History (Masa Lalu)
 final historyListProvider = Provider<List<AddActivityEntity>>((ref) {
-  // Hanya perlu mengamati (watch) list utama
   final asyncActivities = ref.watch(activityListProvider);
-
-  if (asyncActivities.isLoading || asyncActivities.hasError) {
-    return [];
-  }
+  if (asyncActivities.isLoading || asyncActivities.hasError) return [];
 
   final allActivities = asyncActivities.value!;
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+  // Tanggal dasar (Tengah malam hari ini)
+  final todayNormalized = _normalizeDate(DateTime.now());
 
   return allActivities.where((note) {
-    return note.dueDate!.isBefore(today);
+    // 1. Normalisasi due date task
+    final noteDateNormalized = _normalizeDate(note.dueDate!);
+
+    // 2. Cek apakah tanggalnya berada di MASA LALU (kemarin dan sebelumnya)
+    return noteDateNormalized.isBefore(todayNormalized);
   }).toList();
 });
