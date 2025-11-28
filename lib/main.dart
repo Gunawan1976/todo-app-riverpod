@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -15,9 +16,11 @@ void main() {
   final repo = AddActivityRepositoryImplements(db);
 
   // Masukkan Controller ke memori
-  Get.put(AddActivityController(repo));
+  // Get.put(AddActivityController(repo));
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(
+    child: MyApp(),
+  ));
 }
 
 class MyApp extends StatelessWidget {

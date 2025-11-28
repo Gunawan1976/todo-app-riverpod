@@ -1,37 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Import Riverpod
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:todo_app/components/edit_text_widget.dart';
 import 'package:todo_app/components/text_view_widget.dart';
-import 'package:todo_app/pages/add_activity_page/presentation/controller/add_activity_controller.dart';
 
-class AddActivityPages extends StatefulWidget {
+// Import Entities dan Notifier
+import '../../domain/entities/add_activity_entity.dart';
+import '../provider/activity_providers.dart';
+
+
+// Ganti StatefulWidget dengan ConsumerStatefulWidget
+class AddActivityPages extends ConsumerStatefulWidget {
   const AddActivityPages({super.key});
 
   @override
-  State<AddActivityPages> createState() => _AddActivityPagesState();
+  ConsumerState<AddActivityPages> createState() => _AddActivityPagesState();
 }
 
-class _AddActivityPagesState extends State<AddActivityPages> {
-  final AddActivityController controller = Get.find();
+// Ganti State dengan ConsumerState
+class _AddActivityPagesState extends ConsumerState<AddActivityPages> {
+  // final AddActivityController controller = Get.find(); // Dihapus
 
-  TextEditingController title = TextEditingController();
-  TextEditingController description = TextEditingController();
-  TextEditingController descriptionOptional = TextEditingController();
+  // Text Controllers
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController descriptionOptionalController = TextEditingController();
+
+  // State Lokal
   DateTime dueDate = DateTime.now();
-
   bool _notificationsEnabled = true;
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    descriptionOptionalController.dispose();
+    super.dispose();
+  }
+
+  // Fungsi untuk menampilkan Date Picker
+  Future<void> _selectDate(BuildContext context) async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: dueDate,
+      firstDate: DateTime(2015, 8),
+      lastDate: DateTime(2101),
+    );
+
+    if (picked != null && picked != dueDate) {
+      // Tambahkan logic Time Picker jika dibutuhkan di masa depan
+      setState(() {
+        dueDate = picked;
+      });
+    }
+  }
+
+  // Fungsi untuk menyimpan data (Memanggil Riverpod Notifier)
+  void _saveTask() {
+    // 1. Validasi Sederhana
+    if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Judul dan Deskripsi utama wajib diisi.')),
+      );
+      return;
+    }
+
+    // 2. Buat Entity baru
+    final newTask = AddActivityEntity(
+      // Asumsi isCompleted defaultnya false
+      title: titleController.text,
+      description: descriptionController.text,
+      descriptionOptional: descriptionOptionalController.text,
+      dueDate: dueDate,
+      // isCompleted: false, // Perlu ditambah di Entity/Model jika belum ada
+    );
+
+    // 3. Panggil Notifier (Riverpod) untuk menambahkan data
+    // Gunakan ref.read untuk mengakses fungsi
+    ref.read(activityListProvider.notifier).addNote(newTask);
+
+    // 4. Kembali ke halaman sebelumnya
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: Color(0xFFC3D2DD),
+      backgroundColor: const Color(0xFFC3D2DD),
       appBar: AppBar(
         title: TextView(text: "New Task", isBold: true),
         centerTitle: true,
-        backgroundColor: Color(0xFFC3D2DD),
+        backgroundColor: const Color(0xFFC3D2DD),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -40,35 +101,27 @@ class _AddActivityPagesState extends State<AddActivityPages> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               EditText(
-                customController: title,
+                customController: titleController,
                 hintTextField: "What do you need to do?",
                 fillColor: Colors.white,
               ),
               SizedBox(height: 20.h),
               EditText(
-                customController: descriptionOptional,
+                customController: descriptionOptionalController,
                 hintTextField: "Description(Optional)",
                 fillColor: Colors.white,
               ),
               SizedBox(height: 20.h),
               EditText(
-                customController: description,
+                customController: descriptionController,
                 hintTextField: "Description",
                 fillColor: Colors.white,
               ),
               SizedBox(height: 20.h),
+
+              // Date Picker
               InkWell(
-                onTap: () async {
-                  DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(2015, 8),
-                    lastDate: DateTime(2101),
-                  );
-                  setState(() {
-                    dueDate = picked!;
-                  });
-                },
+                onTap: () => _selectDate(context),
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8.r),
@@ -94,8 +147,7 @@ class _AddActivityPagesState extends State<AddActivityPages> {
                               fontSize: 16.sp,
                             ),
                             TextView(
-                              text:
-                              "Hari ini,${DateFormat('dd MMMM yyyy').format(dueDate)}",
+                              text: "Hari ini,${DateFormat('dd MMMM yyyy').format(dueDate)}",
                               fontSize: 12.sp,
                               textColor: Colors.grey,
                             ),
@@ -107,7 +159,10 @@ class _AddActivityPagesState extends State<AddActivityPages> {
                   ),
                 ),
               ),
+
               SizedBox(height: 20.h),
+
+              // Reminder Section
               Row(
                 children: [
                   Icon(Icons.timer, color: Colors.blue, size: 40.sp),
@@ -124,16 +179,12 @@ class _AddActivityPagesState extends State<AddActivityPages> {
               SwitchListTile(
                 contentPadding: const EdgeInsets.all(12.0),
                 title: TextView(text: "Set Reminder", fontSize: 16.sp),
-                // subtitle: const Text('Receive alerts and updates'),
-                // secondary: const Icon(Icons.notifications),
                 tileColor: Colors.white,
                 value: _notificationsEnabled,
                 activeThumbColor: Colors.white,
                 activeTrackColor: Colors.blue,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    12.0,
-                  ), // Adjust 12.0 to change the roundness
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
                 onChanged: (newValue) {
                   setState(() {
@@ -141,18 +192,15 @@ class _AddActivityPagesState extends State<AddActivityPages> {
                   });
                 },
               ),
+
               SizedBox(height: 40.h),
+
+              // Save Button
               SizedBox(
                 width: double.infinity,
                 height: 40.h,
                 child: ElevatedButton(
-                  onPressed: () {
-                    controller.addNote(
-                      title: title.text,
-                      desc: description.text,
-                      dueDate: dueDate,
-                    );
-                  },
+                  onPressed: _saveTask, // Panggil fungsi _saveTask
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     shape: RoundedRectangleBorder(
